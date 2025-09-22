@@ -4,12 +4,13 @@ namespace CustomerManagementConsole
 {
     class Program
     {
-        // Declare an array to hold up to 500 customer records
         static Customer[] customers = new Customer[500];
         static int customerCount = 0;
 
         static void Main(string[] args)
         {
+            InitializeCustomers();  // Initialize with sample data
+
             bool exit = false;
             while (!exit)
             {
@@ -43,6 +44,22 @@ namespace CustomerManagementConsole
             }
         }
 
+        static void InitializeCustomers()
+        {
+            customers[0] = new Customer { CustomerId = 101, Name = "Alice Johnson", Code = "AJ101", Address = "123 Maple St." };
+            customers[1] = new Customer { CustomerId = 102, Name = "Bob Smith", Code = "BS102", Address = "456 Oak Ave." };
+            customers[2] = new Customer { CustomerId = 103, Name = "Carol Davis", Code = "CD103", Address = "789 Pine Rd." };
+            customers[3] = new Customer { CustomerId = 104, Name = "David Miller", Code = "DM104", Address = "321 Birch Ln." };
+            customers[4] = new Customer { CustomerId = 105, Name = "Eva Brown", Code = "EB105", Address = "654 Cedar Blvd." };
+            customers[5] = new Customer { CustomerId = 106, Name = "Frank Wilson", Code = "FW106", Address = "987 Spruce Ct." };
+            customers[6] = new Customer { CustomerId = 107, Name = "Grace Lee", Code = "GL107", Address = "147 Elm St." };
+            customers[7] = new Customer { CustomerId = 108, Name = "Henry Clark", Code = "HC108", Address = "258 Willow Dr." };
+            customers[8] = new Customer { CustomerId = 109, Name = "Ivy Martinez", Code = "IM109", Address = "369 Aspen Way" };
+            customers[9] = new Customer { CustomerId = 110, Name = "Jack Turner", Code = "JT110", Address = "741 Poplar Pl." };
+
+            customerCount = 10;  // Set the current number of customers
+        }
+
         static void DisplayMenu()
         {
             Console.Clear();
@@ -74,42 +91,56 @@ namespace CustomerManagementConsole
             if (customerCount >= 500)
             {
                 Console.WriteLine("Maximum customer limit reached.");
+                Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter CustomerId (numeric): ");
-            int customerId = int.Parse(Console.ReadLine());
+            if (!int.TryParse(Console.ReadLine(), out int customerId))
+            {
+                Console.WriteLine("Invalid CustomerId. Must be numeric.");
+                Console.ReadKey();
+                return;
+            }
 
-            // Ensure unique CustomerId
             for (int i = 0; i < customerCount; i++)
             {
                 if (customers[i].CustomerId == customerId)
                 {
                     Console.WriteLine("CustomerId already exists. Try again.");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
                     return;
                 }
             }
 
             Console.Write("Enter Name (max 50 characters): ");
             string name = Console.ReadLine();
-            if (string.IsNullOrEmpty(name) || name.Length > 50)
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 50)
             {
-                Console.WriteLine("Name is required and should not exceed 50 characters.");
+                Console.WriteLine("Enter a valid name that does not exceed 50 characters.");
+                Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter Code (max 10 characters): ");
             string code = Console.ReadLine();
-            if (string.IsNullOrEmpty(code) || code.Length > 10)
+            if (string.IsNullOrWhiteSpace(code) || code.Length > 10)
             {
-                Console.WriteLine("Code is required and should not exceed 10 characters.");
+                Console.WriteLine("Enter a valid code that does not exceed 10 characters.");
+                Console.ReadKey();
                 return;
             }
 
             Console.Write("Enter Address (max 200 characters, optional): ");
             string address = Console.ReadLine();
+            if (address.Length > 200)
+            {
+                Console.WriteLine("Address cannot exceed 200 characters.");
+                Console.ReadKey();
+                return;
+            }
 
-            // Create and add the new customer
             customers[customerCount] = new Customer
             {
                 CustomerId = customerId,
@@ -121,14 +152,15 @@ namespace CustomerManagementConsole
             customerCount++;
 
             Console.WriteLine("Customer added successfully!");
-            Console.ReadLine();
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
         }
 
         static void ViewCustomers()
         {
             Console.Clear();
             Console.WriteLine("---------------------------------------------------------");
-            Console.WriteLine("| CustomerId | Name           | Code  | Address        |");
+            Console.WriteLine("| CustomerId | Name           | Code  | Address         |");
             Console.WriteLine("---------------------------------------------------------");
 
             for (int i = 0; i < customerCount; i++)
@@ -137,7 +169,8 @@ namespace CustomerManagementConsole
             }
 
             Console.WriteLine("---------------------------------------------------------");
-            Console.ReadLine();
+            Console.WriteLine("Press any key to return to menu...");
+            Console.ReadKey();
         }
 
         static void SearchCustomer()
@@ -148,9 +181,10 @@ namespace CustomerManagementConsole
             bool found = false;
             for (int i = 0; i < customerCount; i++)
             {
-                if (customers[i].Name.ToLower().Contains(searchTerm) || customers[i].Code.ToLower().Contains(searchTerm))
+                if (customers[i].Name.ToLower().Contains(searchTerm) ||
+                    customers[i].Code.ToLower().Contains(searchTerm))
                 {
-                    Console.WriteLine($"Found Customer: {customers[i].CustomerId} - {customers[i].Name} - {customers[i].Code} - {customers[i].Address}");
+                    Console.WriteLine($"Found: {customers[i].CustomerId} - {customers[i].Name} - {customers[i].Code} - {customers[i].Address}");
                     found = true;
                 }
             }
@@ -159,59 +193,128 @@ namespace CustomerManagementConsole
             {
                 Console.WriteLine("No matching customers found.");
             }
-            Console.ReadLine();
+
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
         }
 
         static void UpdateCustomer()
         {
             Console.Write("Enter CustomerId to update: ");
-            int customerId = int.Parse(Console.ReadLine());
+            if (!int.TryParse(Console.ReadLine(), out int customerId))
+            {
+                Console.WriteLine("Invalid input. Must be a number.");
+                Console.ReadKey();
+                return;
+            }
 
             int index = FindCustomerById(customerId);
             if (index == -1)
             {
                 Console.WriteLine("Customer not found.");
-                Console.ReadLine();
+                Console.ReadKey();
                 return;
             }
 
+            Console.WriteLine("\nWhat would you like to update?");
+            Console.WriteLine("1. Name");
+            Console.WriteLine("2. Code");
+            Console.WriteLine("3. Address");
+            Console.WriteLine("4. All");
+            Console.WriteLine("5. Cancel");
+            Console.Write("Enter your choice (1-5): ");
+
+            string choice = Console.ReadLine();
+            switch (choice)
+            {
+                case "1":
+                    UpdateName(index);
+                    break;
+                case "2":
+                    UpdateCode(index);
+                    break;
+                case "3":
+                    UpdateAddress(index);
+                    break;
+                case "4":
+                    UpdateAll(index);
+                    break;
+                case "5":
+                    Console.WriteLine("Update cancelled.");
+                    break;
+                default:
+                    Console.WriteLine("Invalid choice.");
+                    break;
+            }
+
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
+        }
+
+        static void UpdateName(int index)
+        {
             Console.Write("Enter new Name (max 50 characters): ");
             string name = Console.ReadLine();
-            if (string.IsNullOrEmpty(name) || name.Length > 50)
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 50)
             {
-                Console.WriteLine("Name is required and should not exceed 50 characters.");
+                Console.WriteLine("Invalid name. Update failed.");
                 return;
             }
-
-            Console.Write("Enter new Code (max 10 characters): ");
-            string code = Console.ReadLine();
-            if (string.IsNullOrEmpty(code) || code.Length > 10)
-            {
-                Console.WriteLine("Code is required and should not exceed 10 characters.");
-                return;
-            }
-
-            Console.Write("Enter new Address (max 200 characters, optional): ");
-            string address = Console.ReadLine();
 
             customers[index].Name = name;
-            customers[index].Code = code;
-            customers[index].Address = address;
+            Console.WriteLine("Name updated successfully.");
+        }
 
-            Console.WriteLine("Customer updated successfully!");
-            Console.ReadLine();
+        static void UpdateCode(int index)
+        {
+            Console.Write("Enter new Code (max 10 characters): ");
+            string code = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(code) || code.Length > 10)
+            {
+                Console.WriteLine("Invalid code. Update failed.");
+                return;
+            }
+
+            customers[index].Code = code;
+            Console.WriteLine("Code updated successfully.");
+        }
+
+        static void UpdateAddress(int index)
+        {
+            Console.Write("Enter new Address (max 200 characters, optional): ");
+            string address = Console.ReadLine();
+            if (address.Length > 200)
+            {
+                Console.WriteLine("Address too long. Update failed.");
+                return;
+            }
+
+            customers[index].Address = address;
+            Console.WriteLine("Address updated successfully.");
+        }
+
+        static void UpdateAll(int index)
+        {
+            UpdateName(index);
+            UpdateCode(index);
+            UpdateAddress(index);
         }
 
         static void DeleteCustomer()
         {
             Console.Write("Enter CustomerId to delete: ");
-            int customerId = int.Parse(Console.ReadLine());
+            if (!int.TryParse(Console.ReadLine(), out int customerId))
+            {
+                Console.WriteLine("Invalid input. Must be a number.");
+                Console.ReadKey();
+                return;
+            }
 
             int index = FindCustomerById(customerId);
             if (index == -1)
             {
                 Console.WriteLine("Customer not found.");
-                Console.ReadLine();
+                Console.ReadKey();
                 return;
             }
 
@@ -221,13 +324,12 @@ namespace CustomerManagementConsole
 
             if (confirm == 'Y')
             {
-                // Shift all records to remove the deleted customer
                 for (int i = index; i < customerCount - 1; i++)
                 {
                     customers[i] = customers[i + 1];
                 }
 
-                customers[customerCount - 1] = null; // Clear the last element
+                customers[customerCount - 1] = null;
                 customerCount--;
 
                 Console.WriteLine("Customer deleted successfully.");
@@ -236,7 +338,9 @@ namespace CustomerManagementConsole
             {
                 Console.WriteLine("Deletion cancelled.");
             }
-            Console.ReadLine();
+
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
         }
 
         static int FindCustomerById(int customerId)
@@ -244,19 +348,26 @@ namespace CustomerManagementConsole
             for (int i = 0; i < customerCount; i++)
             {
                 if (customers[i].CustomerId == customerId)
-                {
                     return i;
-                }
             }
             return -1;
         }
-
         static bool ExitApplication()
         {
             Console.Write("Are you sure you want to exit? (Y/N): ");
             char confirm = Char.ToUpper(Console.ReadKey().KeyChar);
             Console.WriteLine();
-            return confirm == 'Y';
+
+            if (confirm == 'Y')
+            {
+                Console.WriteLine("Exiting application...");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine("Exit cancelled. Returning to menu...");
+                return false;
+            }
         }
     }
 
