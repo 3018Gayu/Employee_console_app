@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 
 namespace CustomerManagementConsole
 {
@@ -9,7 +10,7 @@ namespace CustomerManagementConsole
 
         static void Main(string[] args)
         {
-            InitializeCustomers();  // Initialize with sample data
+            InitializeCustomers();
 
             bool exit = false;
             while (!exit)
@@ -19,27 +20,13 @@ namespace CustomerManagementConsole
 
                 switch (choice)
                 {
-                    case 1:
-                        AddCustomer();
-                        break;
-                    case 2:
-                        ViewCustomers();
-                        break;
-                    case 3:
-                        SearchCustomer();
-                        break;
-                    case 4:
-                        UpdateCustomer();
-                        break;
-                    case 5:
-                        DeleteCustomer();
-                        break;
-                    case 6:
-                        exit = ExitApplication();
-                        break;
-                    default:
-                        Console.WriteLine("Invalid choice, please try again.");
-                        break;
+                    case 1: AddCustomer(); break;
+                    case 2: ViewCustomers(); break;
+                    case 3: SearchCustomer(); break;
+                    case 4: UpdateCustomer(); break;
+                    case 5: DeleteCustomer(); break;
+                    case 6: exit = ExitApplication(); break;
+                    default: Console.WriteLine("Invalid choice, please try again."); break;
                 }
             }
         }
@@ -57,7 +44,7 @@ namespace CustomerManagementConsole
             customers[8] = new Customer { CustomerId = 109, Name = "Ivy Martinez", Code = "IM109", Address = "369 Aspen Way" };
             customers[9] = new Customer { CustomerId = 110, Name = "Jack Turner", Code = "JT110", Address = "741 Poplar Pl." };
 
-            customerCount = 10;  // Set the current number of customers
+            customerCount = 10;
         }
 
         static void DisplayMenu()
@@ -108,29 +95,31 @@ namespace CustomerManagementConsole
                 if (customers[i].CustomerId == customerId)
                 {
                     Console.WriteLine("CustomerId already exists. Try again.");
-                    Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
                 }
             }
 
-            Console.Write("Enter Name (max 50 characters): ");
+            Console.Write("Enter Name (required, max 50 characters): ");
             string name = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 50)
             {
-                Console.WriteLine("Enter a valid name that does not exceed 50 characters.");
+                Console.WriteLine("Invalid name. Max 50 characters.");
                 Console.ReadKey();
                 return;
             }
 
-            Console.Write("Enter Code (max 10 characters): ");
-            string code = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(code) || code.Length > 10)
+            string code;
+            do
             {
-                Console.WriteLine("Enter a valid code that does not exceed 10 characters.");
-                Console.ReadKey();
-                return;
-            }
+                Console.Write("Enter Code (alphanumeric only, must include at least one letter and one number, max 10 characters): ");
+                code = Console.ReadLine();
+                if (!IsValidCode(code))
+                {
+                    Console.WriteLine("Invalid Code! Must be alphanumeric and include both letters and digits.");
+                }
+                else break;
+            } while (true);
 
             Console.Write("Enter Address (max 200 characters, optional): ");
             string address = Console.ReadLine();
@@ -141,7 +130,7 @@ namespace CustomerManagementConsole
                 return;
             }
 
-            customers[customerCount] = new Customer
+            customers[customerCount++] = new Customer
             {
                 CustomerId = customerId,
                 Name = name,
@@ -149,26 +138,33 @@ namespace CustomerManagementConsole
                 Address = address
             };
 
-            customerCount++;
-
             Console.WriteLine("Customer added successfully!");
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
         }
 
+        static bool IsValidCode(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input) || input.Length > 10)
+                return false;
+
+            Regex regex = new Regex(@"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{1,10}$");
+            return regex.IsMatch(input);
+        }
+
         static void ViewCustomers()
         {
             Console.Clear();
-            Console.WriteLine("---------------------------------------------------------");
-            Console.WriteLine("| CustomerId | Name           | Code  | Address         |");
-            Console.WriteLine("---------------------------------------------------------");
+            Console.WriteLine("---------------------------------------------------------------");
+            Console.WriteLine("| CustomerId | Name            | Code       | Address          |");
+            Console.WriteLine("---------------------------------------------------------------");
 
             for (int i = 0; i < customerCount; i++)
             {
-                Console.WriteLine($"| {customers[i].CustomerId,10} | {customers[i].Name,-15} | {customers[i].Code,-5} | {customers[i].Address,-15} |");
+                Console.WriteLine($"| {customers[i].CustomerId,10} | {customers[i].Name,-15} | {customers[i].Code,-10} | {customers[i].Address,-15} |");
             }
 
-            Console.WriteLine("---------------------------------------------------------");
+            Console.WriteLine("---------------------------------------------------------------");
             Console.WriteLine("Press any key to return to menu...");
             Console.ReadKey();
         }
@@ -181,8 +177,7 @@ namespace CustomerManagementConsole
             bool found = false;
             for (int i = 0; i < customerCount; i++)
             {
-                if (customers[i].Name.ToLower().Contains(searchTerm) ||
-                    customers[i].Code.ToLower().Contains(searchTerm))
+                if (customers[i].Name.ToLower().Contains(searchTerm) || customers[i].Code.ToLower().Contains(searchTerm))
                 {
                     Console.WriteLine($"Found: {customers[i].CustomerId} - {customers[i].Name} - {customers[i].Code} - {customers[i].Address}");
                     found = true;
@@ -223,28 +218,16 @@ namespace CustomerManagementConsole
             Console.WriteLine("4. All");
             Console.WriteLine("5. Cancel");
             Console.Write("Enter your choice (1-5): ");
-
             string choice = Console.ReadLine();
+
             switch (choice)
             {
-                case "1":
-                    UpdateName(index);
-                    break;
-                case "2":
-                    UpdateCode(index);
-                    break;
-                case "3":
-                    UpdateAddress(index);
-                    break;
-                case "4":
-                    UpdateAll(index);
-                    break;
-                case "5":
-                    Console.WriteLine("Update cancelled.");
-                    break;
-                default:
-                    Console.WriteLine("Invalid choice.");
-                    break;
+                case "1": UpdateName(index); break;
+                case "2": UpdateCode(index); break;
+                case "3": UpdateAddress(index); break;
+                case "4": UpdateName(index); UpdateCode(index); UpdateAddress(index); break;
+                case "5": Console.WriteLine("Update cancelled."); break;
+                default: Console.WriteLine("Invalid choice."); break;
             }
 
             Console.WriteLine("Press any key to continue...");
@@ -267,16 +250,23 @@ namespace CustomerManagementConsole
 
         static void UpdateCode(int index)
         {
-            Console.Write("Enter new Code (max 10 characters): ");
-            string code = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(code) || code.Length > 10)
+            string code;
+            do
             {
-                Console.WriteLine("Invalid code. Update failed.");
-                return;
-            }
+                Console.Write("Enter new Code (alphanumeric only, must include letters and digits, max 10 characters): ");
+                code = Console.ReadLine();
 
-            customers[index].Code = code;
-            Console.WriteLine("Code updated successfully.");
+                if (!IsValidCode(code))
+                {
+                    Console.WriteLine("Invalid Code! Must include both letters and numbers.");
+                }
+                else
+                {
+                    customers[index].Code = code;
+                    Console.WriteLine("Code updated successfully.");
+                    break;
+                }
+            } while (true);
         }
 
         static void UpdateAddress(int index)
@@ -291,13 +281,6 @@ namespace CustomerManagementConsole
 
             customers[index].Address = address;
             Console.WriteLine("Address updated successfully.");
-        }
-
-        static void UpdateAll(int index)
-        {
-            UpdateName(index);
-            UpdateCode(index);
-            UpdateAddress(index);
         }
 
         static void DeleteCustomer()
@@ -352,6 +335,7 @@ namespace CustomerManagementConsole
             }
             return -1;
         }
+
         static bool ExitApplication()
         {
             Console.Write("Are you sure you want to exit? (Y/N): ");
@@ -365,7 +349,7 @@ namespace CustomerManagementConsole
             }
             else
             {
-                Console.WriteLine("Exit cancelled. Returning to menu...");
+                Console.WriteLine("Exit cancelled.");
                 return false;
             }
         }
