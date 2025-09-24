@@ -20,13 +20,20 @@ namespace CustomerManagementConsole
 
                 switch (choice)
                 {
-                    case 1: AddCustomer(); break;
-                    case 2: ViewCustomers(); break;
-                    case 3: SearchCustomer(); break;
-                    case 4: UpdateCustomer(); break;
-                    case 5: DeleteCustomer(); break;
-                    case 6: exit = ExitApplication(); break;
-                    default: Console.WriteLine("Invalid choice, please try again."); break;
+                    case 1: AddCustomer();
+                        break;
+                    case 2: ViewCustomers();
+                        break;
+                    case 3: SearchCustomer();
+                        break;
+                    case 4: UpdateCustomer();
+                        break;
+                    case 5: DeleteCustomer();
+                        break;
+                    case 6: exit = ExitApplication();
+                        break;
+                    default: Console.WriteLine("Invalid choice, please try again.");
+                        break;
                 }
             }
         }
@@ -163,7 +170,9 @@ namespace CustomerManagementConsole
             {
                 Console.WriteLine($"| {customers[i].CustomerId,10} | {customers[i].Name,-15} | {customers[i].Code,-10} | {customers[i].Address,-15} |");
             }
+            //10 → Align right, with a width of 10 characters.
 
+            //-15 → Align left, with a width of 15 characters.
             Console.WriteLine("---------------------------------------------------------------");
             Console.WriteLine("Press any key to return to menu...");
             Console.ReadKey();
@@ -196,7 +205,7 @@ namespace CustomerManagementConsole
         static void UpdateCustomer()
         {
             Console.Write("Enter CustomerId to update: ");
-            if (!int.TryParse(Console.ReadLine(), out int customerId))
+            if (!int.TryParse(Console.ReadLine(), out int customerId)) // int.TryParse tries to convert it to an integer--> retrn true / false, storing it in customerId. out is keywod (defined inside method and return to caller)
             {
                 Console.WriteLine("Invalid input. Must be a number.");
                 Console.ReadKey();
@@ -340,6 +349,7 @@ namespace CustomerManagementConsole
         {
             Console.Write("Are you sure you want to exit? (Y/N): ");
             char confirm = Char.ToUpper(Console.ReadKey().KeyChar);
+            //To store or work with the actual letter (like 'A' to 'Z' or 'a' to 'z'), you need to access the .KeyChar property of that object.
             Console.WriteLine();
 
             if (confirm == 'Y')
@@ -357,7 +367,7 @@ namespace CustomerManagementConsole
 
     class Customer
     {
-        public int CustomerId { get; set; }
+        public int CustomerId { get; set; } //auto-implemented property in C#.
         public string Name { get; set; }
         public string Code { get; set; }
         public string Address { get; set; }
