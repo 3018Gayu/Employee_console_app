@@ -1,11 +1,22 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+
 namespace CustomerManagementConsole
 {
-    abstract class Person
+    // Interface for Person
+    interface IPerson
     {
-        private string name = string.Empty;
-        private string? address;
+        string Name { get; set; }
+        string Address { get; set; }
+        string GetDetails();
+    }
+
+    // Abstract Person class implementing IPerson
+    abstract class Person : IPerson
+    {
+        private string name;
+        private string address;
+
         public string Name
         {
             get => name;
@@ -13,541 +24,493 @@ namespace CustomerManagementConsole
             {
                 if (string.IsNullOrWhiteSpace(value) || value.Length > 50)
                     throw new ArgumentException("Name is required and max 50 characters.");
-                name = value;
+                name = value.Trim();
             }
         }
-        public string? Address
+
+        public string Address
         {
             get => address;
             set
             {
                 if (value != null && value.Length > 200)
                     throw new ArgumentException("Address max length is 200 characters.");
-                address = string.IsNullOrWhiteSpace(value) ? null : value;
+                address = value?.Trim() ?? "";
             }
         }
+
+        public virtual string GetDetails()
+        {
+            return $"Name: {Name}, Address: {Address}";
+        }
     }
+
+    // Customer class inherits Person
     class Customer : Person
     {
         private int customerId;
-        private string code = string.Empty;
+        private string code;
+
         public int CustomerId
         {
             get => customerId;
             set
             {
                 if (value <= 0)
-                    throw new ArgumentException("CustomerId must be positive numeric.");
+                    throw new ArgumentException("CustomerId must be positive.");
                 customerId = value;
             }
         }
+
         public string Code
         {
             get => code;
             set
             {
                 if (!IsValidCode(value))
-                    throw new ArgumentException("Code must be alphanumeric, max 10 chars, with at least one letter and one digit.");
-                code = value;
+                    throw new ArgumentException("Code must be alphanumeric (letters & digits), max 10 chars, at least one letter and one digit.");
+                code = value.Trim();
             }
         }
-        private static bool IsValidCode(string input)
+
+        private bool IsValidCode(string input)
         {
-            if (string.IsNullOrWhiteSpace(input) || input.Length > 10) return false;
+            if (string.IsNullOrWhiteSpace(input) || input.Length > 10)
+                return false;
+            // At least one letter and one digit, only alphanumeric allowed
             return Regex.IsMatch(input, @"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{1,10}$");
+        }
+
+        public override string GetDetails()
+        {
+            return $"ID: {CustomerId}, Name: {Name}, Code: {Code}, Address: {Address}";
         }
     }
 
-    // --- Interface and Manager (Abstraction and Implementation) ---
-
+    // Interface for customer operations
     interface ICustomerOperations
     {
         void AddCustomer(Customer customer);
-        void DisplayCustomers(Customer[] customersToDisplay);
-        Customer? SearchCustomerById(int customerId);
+        void DisplayCustomers(Customer[] customers);
+        Customer SearchCustomerById(int customerId);
         Customer[] SearchCustomersByNameOrCode(string searchTerm);
         void UpdateCustomer(Customer customer);
         bool DeleteCustomer(int customerId);
         Customer[] GetAllCustomers();
-        Customer[] GetCustomersSortedByName(bool ascending);
-        Customer[] GetCustomersSortedById(bool ascending);
     }
+
+    // Manager class handling customers
     class CustomerManager : ICustomerOperations
     {
-        private readonly Customer?[] customers = new Customer?[500];
+        private Customer[] customers;
         private int customerCount;
-        public CustomerManager(int capacity)
+
+        public CustomerManager()
         {
-            // Initialized above for conciseness, but the constructor can enforce capacity
+            customers = new Customer[500];
+            customerCount = 0;
         }
 
         public void AddCustomer(Customer customer)
         {
             if (customerCount >= customers.Length)
-                throw new InvalidOperationException("Maximum customer limit reached (500).");
+                throw new InvalidOperationException("Customer limit reached.");
             if (SearchCustomerById(customer.CustomerId) != null)
-                throw new ArgumentException($"CustomerId {customer.CustomerId} already exists.");
+                throw new ArgumentException("CustomerId already exists.");
             customers[customerCount++] = customer;
         }
 
         public Customer[] GetAllCustomers()
         {
-            Customer[] activeCustomers = new Customer[customerCount];
-            Array.Copy(customers, activeCustomers, customerCount);
-            return activeCustomers!;
+            Customer[] result = new Customer[customerCount];
+            Array.Copy(customers, result, customerCount);
+            return result;
         }
 
-        public Customer? SearchCustomerById(int customerId) =>
-            Array.Find(customers, c => c?.CustomerId == customerId);
-
+        public Customer SearchCustomerById(int customerId)
+        {
+            for (int i = 0; i < customerCount; i++)
+                if (customers[i]?.CustomerId == customerId)
+                    return customers[i];
+            return null;
+        }
 
         public Customer[] SearchCustomersByNameOrCode(string searchTerm)
         {
-            if (string.IsNullOrWhiteSpace(searchTerm)) return Array.Empty<Customer>();
-            string lowerTerm = searchTerm.ToLower().Trim();
-            int foundCount = 0;
+            string lower = searchTerm.ToLower().Trim();
+            Customer[] tempResults = new Customer[customerCount];
+            int found = 0;
+
             for (int i = 0; i < customerCount; i++)
             {
                 if (customers[i] != null &&
-                    (customers[i]!.Name.ToLower().Contains(lowerTerm) ||
-                     customers[i]!.Code.ToLower().Contains(lowerTerm)))
+                    (customers[i].Name.ToLower().Contains(lower) ||
+                     customers[i].Code.ToLower().Contains(lower)))
                 {
-                    foundCount++;
+                    tempResults[found++] = customers[i];
                 }
             }
 
-            Customer[] results = new Customer[foundCount];
-            int resultIndex = 0;
-            for (int i = 0; i < customerCount; i++)
-            {
-                if (customers[i] != null &&
-                    (customers[i]!.Name.ToLower().Contains(lowerTerm) ||
-                     customers[i]!.Code.ToLower().Contains(lowerTerm)))
-                {
-                    results[resultIndex++] = customers[i]!;
-                }
-            }
+            Customer[] results = new Customer[found];
+            Array.Copy(tempResults, results, found);
             return results;
         }
 
         public void UpdateCustomer(Customer updatedCustomer)
         {
-            int index = Array.FindIndex(customers, c => c?.CustomerId == updatedCustomer.CustomerId);
-
-            if (index == -1 || index >= customerCount)
-                throw new ArgumentException("Customer not found to update.");
-            customers[index]!.Name = updatedCustomer.Name;
-            customers[index]!.Code = updatedCustomer.Code;
-            customers[index]!.Address = updatedCustomer.Address;
+            for (int i = 0; i < customerCount; i++)
+                if (customers[i]?.CustomerId == updatedCustomer.CustomerId)
+                {
+                    customers[i] = updatedCustomer;
+                    return;
+                }
+            throw new ArgumentException("Customer not found.");
         }
 
         public bool DeleteCustomer(int customerId)
         {
-            int index = Array.FindIndex(customers, c => c?.CustomerId == customerId);
-            if (index == -1 || index >= customerCount) return false;
-
-            if (index < customerCount - 1)
+            for (int i = 0; i < customerCount; i++)
             {
-                Array.Copy(customers, index + 1, customers, index, customerCount - 1 - index);
-            }
-
-            customers[customerCount - 1] = null;
-            customerCount--;
-            return true;
-        }
-
-        private static void Swap(Customer?[] arr, int i, int j)
-        {
-            Customer? temp = arr[i];
-            arr[i] = arr[j];
-            arr[j] = temp;
-        }
-
-        private Customer[] SortCustomers(Func<Customer, Customer, int> comparisonLogic, bool ascending)
-        {
-            Customer?[] sorted = GetAllCustomers();
-            int count = sorted.Length;
-            // Bubble Sort implementation
-            for (int i = 0; i < count - 1; i++)
-            {
-                for (int j = 0; j < count - 1 - i; j++)
+                if (customers[i]?.CustomerId == customerId)
                 {
-                    Customer c1 = sorted[j]!;
-                    Customer c2 = sorted[j + 1]!;
-                    int comparison = comparisonLogic(c1, c2);
-                    bool shouldSwap = ascending ? (comparison > 0) : (comparison < 0);
-                    if (shouldSwap)
-                    {
-                        Swap(sorted, j, j + 1);
-                    }
+                    // Shift all after i left by one
+                    for (int j = i; j < customerCount - 1; j++)
+                        customers[j] = customers[j + 1];
+                    customers[customerCount - 1] = null;
+                    customerCount--;
+                    return true;
                 }
             }
-            return sorted!;
+            return false;
         }
-
-        public Customer[] GetCustomersSortedByName(bool ascending) =>
-            SortCustomers((c1, c2) =>
-                string.Compare(c1.Name, c2.Name, StringComparison.OrdinalIgnoreCase), ascending);
-
-        public Customer[] GetCustomersSortedById(bool ascending) =>
-            SortCustomers((c1, c2) =>
-                c1.CustomerId.CompareTo(c2.CustomerId), ascending);
 
         public void DisplayCustomers(Customer[] customersToDisplay)
         {
-            Console.Clear();
-            Console.WriteLine("----------------------------------------------------------------------------------");
-            Console.WriteLine("| CustomerId | Name                  | Code       | Address                         |");
-            Console.WriteLine("----------------------------------------------------------------------------------");
+            Console.WriteLine("-------------------------------------------------------------------------------------------");
+            Console.WriteLine("| {0,10} | {1,-20} | {2,-10} | {3,-40} |", "CustomerId", "Name", "Code", "Address");
+            Console.WriteLine("-------------------------------------------------------------------------------------------");
 
             if (customersToDisplay == null || customersToDisplay.Length == 0)
             {
-                Console.WriteLine("| No customers found.                                                            |");
+                Console.WriteLine("|                           No customers found.                                            |");
             }
             else
             {
                 foreach (Customer c in customersToDisplay)
                 {
-                    string displayAddress = c.Address ?? string.Empty;
-                    if (displayAddress.Length > 30) displayAddress = displayAddress.Substring(0, 27) + "...";
-                    Console.WriteLine($"| {c.CustomerId,10} | {c.Name,-21} | {c.Code,-10} | {displayAddress,-30} |");
+                    string addr = c.Address ?? "";
+                    if (addr.Length > 40)
+                        addr = addr.Substring(0, 37) + "...";
+                    Console.WriteLine("| {0,10} | {1,-20} | {2,-10} | {3,-40} |", c.CustomerId, c.Name, c.Code, addr);
                 }
             }
-            Console.WriteLine("----------------------------------------------------------------------------------");
+            Console.WriteLine("-------------------------------------------------------------------------------------------");
         }
     }
 
     class Program
     {
-        static readonly CustomerManager customerManager = new(500);
-
         static void Main()
         {
-            InitializeCustomers();
-            bool exit = false;
-            while (!exit)
+            CustomerManager manager = new CustomerManager();
+            AddDefaultCustomers(manager);
+
+            while (true)
             {
-                DisplayMenu();
-                int choice = GetValidatedIntInput("Enter your choice: ", 1, 7, "Invalid choice. Please enter 1-7: ");
-                switch (choice)
+                Console.WriteLine("\nCustomer Management Menu");
+                Console.WriteLine("1. Add Customer");
+                Console.WriteLine("2. View All Customers");
+                Console.WriteLine("3. Search Customer");
+                Console.WriteLine("4. Update Customer");
+                Console.WriteLine("5. Delete Customer");
+                Console.WriteLine("6. Exit");
+                Console.Write("Enter choice: ");
+
+                string input = Console.ReadLine() ?? "";
+                Console.WriteLine();
+
+                switch (input)
                 {
-                    case 1: AddCustomerUI(); break;
-                    case 2: ViewAllCustomersUI(); break;
-                    case 3: SortCustomersUI(); break;
-                    case 4: SearchCustomerUI(); break;
-                    case 5: UpdateCustomerUI(); break;
-                    case 6: DeleteCustomerUI(); break;
-                    case 7: exit = ExitApplication(); break;
+                    case "1":
+                        AddCustomerFlow(manager);
+                        break;
+                    case "2":
+                        manager.DisplayCustomers(manager.GetAllCustomers());
+                        break;
+                    case "3":
+                        SearchCustomerFlow(manager);
+                        break;
+                    case "4":
+                        UpdateCustomerFlow(manager);
+                        break;
+                    case "5":
+                        DeleteCustomerFlow(manager);
+                        break;
+                    case "6":
+                        if (ConfirmAction("Are you sure you want to exit? (yes/no): "))
+                        {
+                            Console.WriteLine("Exiting...");
+                            return;
+                        }
+                        break;
+                    default:
+                        Console.WriteLine("Invalid choice.");
+                        break;
                 }
+
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+                Console.Clear();
             }
         }
 
-        private static int GetValidatedIntInput(string prompt, int min, int max, string errorMsg)
+        static void AddDefaultCustomers(CustomerManager manager)
         {
-            int choice;
-            Console.Write(prompt);            
-            while (!int.TryParse(Console.ReadLine(), out choice) || choice < min || choice > max)
+            Customer[] defaults = new Customer[]
             {
-                Console.WriteLine(errorMsg);
-                Console.Write(prompt);
-            }
-            return choice;
-        }
+                new Customer { CustomerId = 1, Name = "Alice Johnson", Code = "A1B2C3", Address = "123 Maple Street" },
+                new Customer { CustomerId = 2, Name = "Bob Smith", Code = "B2C3D4", Address = "456 Oak Avenue" },
+                new Customer { CustomerId = 3, Name = "Carol White", Code = "C3D4E5", Address = "789 Pine Road" },
+                new Customer { CustomerId = 4, Name = "David Brown", Code = "D4E5F6", Address = "101 Elm Blvd" },
+                new Customer { CustomerId = 5, Name = "Eve Black", Code = "E5F6G7", Address = "202 Birch Lane" },
+            };
 
-        private static int GetUserIdInput(string prompt) =>
-            GetValidatedIntInput(prompt, 1, int.MaxValue, "Invalid ID. Please enter a positive numeric CustomerId: ");
-
-        private static string GetValidatedStringProperty(string prompt, Action<string> validationAction)
-        {
-            string value = string.Empty;
-            bool valid = false;
-            while (!valid)
+            foreach (var cust in defaults)
             {
-                Console.Write(prompt);
-                value = Console.ReadLine() ?? string.Empty;
                 try
                 {
-                    validationAction(value);
-                    valid = true;
+                    manager.AddCustomer(cust);
                 }
-                catch (ArgumentException ex)
+                catch
                 {
-                    Console.WriteLine($"Validation Error: {ex.Message}");
+                    // Ignore duplicates
                 }
             }
-            return value;
         }
 
-
-        private static void InitializeCustomers()
+        static void AddCustomerFlow(CustomerManager manager)
         {
             try
             {
-                customerManager.AddCustomer(new Customer { CustomerId = 101, Name = "Alice Johnson", Code = "AJ101", Address = "123 Maple St." });
-                customerManager.AddCustomer(new Customer { CustomerId = 102, Name = "Bob Smith", Code = "BS102", Address = "456 Oak Ave." });
-                customerManager.AddCustomer(new Customer { CustomerId = 103, Name = "Carol Davis", Code = "CD103", Address = "789 Pine Rd." });
-                customerManager.AddCustomer(new Customer { CustomerId = 104, Name = "David Miller", Code = "DM104", Address = "321 Birch Ln." });
-                customerManager.AddCustomer(new Customer { CustomerId = 105, Name = "Eva Brown", Code = "EB105", Address = "654 Cedar Blvd." });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Initialization Error: {ex.Message}");
-            }
-        }
-
-        private static void DisplayMenu()
-        {
-            Console.Clear();
-            Console.WriteLine("========================================");
-            Console.WriteLine("      Customer Management System");
-            Console.WriteLine("========================================");
-            Console.WriteLine("1. Add New Customer");
-            Console.WriteLine("2. View All Customers (Default Order)");
-            Console.WriteLine("3. Sort Customers");
-            Console.WriteLine("4. Search Customer (by Name or Code)");
-            Console.WriteLine("5. Update Customer");
-            Console.WriteLine("6. Delete Customer");
-            Console.WriteLine("7. Exit");
-            Console.WriteLine("========================================");
-        }
-
-        private static void AddCustomerUI()
-        {
-            Console.Clear();
-            Console.WriteLine("--- Add New Customer ---");
-            try
-            {
-                int id = GetUserIdInput("Enter CustomerId: ");
-                if (customerManager.SearchCustomerById(id) != null)
+                Customer customer = new Customer();
+                customer.CustomerId = ReadInt("Enter Customer ID: ", val =>
                 {
-                    Console.WriteLine($"CustomerId {id} already exists. Cannot add.");
-                    return;
-                }
+                    if (val <= 0) throw new ArgumentException("Customer ID must be positive.");
+                    if (manager.SearchCustomerById(val) != null) throw new ArgumentException("Customer ID already exists.");
+                });
 
-                string name = GetValidatedStringProperty("Enter Name (required, max 50 chars): ", val => new Customer { Name = val });
-                string code = GetValidatedStringProperty("Enter Code (alphanumeric, letter+digit, max 10 chars): ", val => new Customer { Code = val });
+                customer.Name = ReadString("Enter Name: ", 1, 50, false);
+                customer.Code = ReadCode("Enter Code: ");
+                customer.Address = ReadString("Enter Address (optional): ", 0, 200, true);
 
-                Console.Write("Enter Address (optional, max 200 chars): ");
-                string address = Console.ReadLine() ?? string.Empty;
-
-                Customer newCustomer = new Customer
-                {
-                    CustomerId = id,
-                    Name = name,
-                    Code = code,
-                    Address = address
-                };
-
-                customerManager.AddCustomer(newCustomer);
+                manager.AddCustomer(customer);
                 Console.WriteLine("Customer added successfully!");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to add customer: {ex.Message}");
+                Console.WriteLine("Error: " + ex.Message);
             }
-            finally
+        }
+
+        static void SearchCustomerFlow(CustomerManager manager)
+        {
+            Console.WriteLine("Search by:");
+            Console.WriteLine("1. Customer ID");
+            Console.WriteLine("2. Name or Code");
+            Console.Write("Enter choice: ");
+            string choice = Console.ReadLine() ?? "";
+            Console.WriteLine();
+
+            if (choice == "1")
             {
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
+                int id = ReadInt("Enter Customer ID to search: ");
+                Customer found = manager.SearchCustomerById(id);
+                if (found == null)
+                {
+                    Console.WriteLine("No customer found with ID: " + id);
+                }
+                else
+                {
+                    manager.DisplayCustomers(new Customer[] { found });
+                }
+            }
+            else if (choice == "2")
+            {
+                Console.Write("Enter Name or Code to search: ");
+                string term = Console.ReadLine() ?? "";
+                var foundCustomers = manager.SearchCustomersByNameOrCode(term);
+                manager.DisplayCustomers(foundCustomers);
+            }
+            else
+            {
+                Console.WriteLine("Invalid choice.");
             }
         }
 
-        private static void ViewAllCustomersUI()
+        static void UpdateCustomerFlow(CustomerManager manager)
         {
-            customerManager.DisplayCustomers(customerManager.GetAllCustomers());
-            Console.WriteLine("Press any key to return to menu...");
-            Console.ReadKey();
-        }
+            int id = ReadInt("Enter Customer ID to update: ");
+            Customer existing = manager.SearchCustomerById(id);
+            if (existing == null)
+            {
+                Console.WriteLine("Customer not found.");
+                return;
+            }
 
-        private static void SortCustomersUI()
-        {
-            Console.Clear();
-            Console.WriteLine("--- Sort Customers ---");
+            Console.WriteLine("Current details:");
+            manager.DisplayCustomers(new Customer[] { existing });
 
-            int fieldChoice = GetValidatedIntInput("Sort Field (1. ID, 2. Name): ", 1, 2, "Invalid input. Please enter 1 or 2: ");
-            int directionChoice = GetValidatedIntInput("Sort Direction (1. Asc, 2. Desc): ", 1, 2, "Invalid input. Please enter 1 or 2: ");
-            bool ascending = (directionChoice == 1);
+            Console.WriteLine("Which fields do you want to update?");
+            Console.WriteLine("Options: name / code / address / all / none");
+            Console.Write("Enter your choice: ");
+            string choice = (Console.ReadLine() ?? "").Trim().ToLower();
 
-            Customer[] customersToDisplay = (fieldChoice == 1)
-                ? customerManager.GetCustomersSortedById(ascending)
-                : customerManager.GetCustomersSortedByName(ascending);
+            if (choice == "none")
+            {
+                Console.WriteLine("No updates made.");
+                return;
+            }
 
-            customerManager.DisplayCustomers(customersToDisplay);
-            Console.WriteLine("Press any key to return to menu...");
-            Console.ReadKey();
-        }
-
-        private static void SearchCustomerUI()
-        {
-            Console.Clear();
-            Console.WriteLine("--- Search Customer ---");
-            Console.Write("Enter Name or Code to search: ");
-            string searchTerm = Console.ReadLine() ?? string.Empty;
-
-            var results = customerManager.SearchCustomersByNameOrCode(searchTerm);
-
-            Console.WriteLine($"Found {results.Length} matching customer(s):");
-            customerManager.DisplayCustomers(results);
-
-            Console.WriteLine("Press any key to continue...");
-            Console.ReadKey();
-        }
-
-        private static void UpdateCustomerUI()
-        {
-            Console.Clear();
-            Console.WriteLine("--- Update Customer ---");
             try
             {
-                int id = GetUserIdInput("Enter CustomerId to update: ");
-                Customer? customer = customerManager.SearchCustomerById(id);
-
-                if (customer == null)
+                if (choice == "name" || choice == "all")
                 {
-                    Console.WriteLine("Customer not found.");
-                    return;
+                    existing.Name = ReadString("Enter new Name: ", 1, 50, false);
                 }
 
-                Console.WriteLine($"\n--- Current Details for ID {id} ---");
-                Console.WriteLine($"Name: {customer.Name}");
-                Console.WriteLine($"Code: {customer.Code}");
-                Console.WriteLine($"Address: {customer.Address ?? "N/A"}");
-                Console.WriteLine("-----------------------------------\n");
-
-                Console.WriteLine("What would you like to update?");
-                Console.WriteLine("1. Name");
-                Console.WriteLine("2. Code");
-                Console.WriteLine("3. All Fields (Name, Code, and Address)");
-                Console.WriteLine("4. Cancel");
-
-                int updateChoice = GetValidatedIntInput("Enter your choice (1-4): ", 1, 4, "Invalid choice. Please enter 1-4: ");
-
-                if (updateChoice == 4)
+                if (choice == "code" || choice == "all")
                 {
-                    Console.WriteLine("Update cancelled.");
-                    return;
-                }
-                    Customer tempCustomer = new Customer
-                {
-                    CustomerId = customer.CustomerId,
-                    Name = customer.Name,
-                    Code = customer.Code,
-                    Address = customer.Address
-                };
-                switch (updateChoice)
-                {
-                    case 1: 
-                        UpdateFieldWithValidation("Name", customer.Name, val => tempCustomer.Name = val);
-                        break;
-                    case 2: 
-                        UpdateFieldWithValidation("Code", customer.Code, val => tempCustomer.Code = val);
-                        break;
-                    case 3: 
-                        UpdateFieldWithValidation("Name", customer.Name, val => tempCustomer.Name = val);
-                        UpdateFieldWithValidation("Code", customer.Code, val => tempCustomer.Code = val);
-                        UpdateAddressField(customer.Address, tempCustomer);
-                        break;
+                    existing.Code = ReadCode("Enter new Code: ");
                 }
 
-                customerManager.UpdateCustomer(tempCustomer);
-                Console.WriteLine("\nCustomer updated successfully.");
+                if (choice == "address" || choice == "all")
+                {
+                    existing.Address = ReadString("Enter new Address (optional): ", 0, 200, true);
+                }
+
+                manager.UpdateCustomer(existing);
+                Console.WriteLine("Customer updated successfully!");
+                manager.DisplayCustomers(new Customer[] { existing });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\nUpdate failed: {ex.Message}");
-            }
-            finally
-            {
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
+                Console.WriteLine("Update failed: " + ex.Message);
             }
         }
 
-        private static void UpdateAddressField(string? currentAddress, Customer tempCustomer)
+        static void DeleteCustomerFlow(CustomerManager manager)
         {
-            Console.Write($"Update Address (Current: {currentAddress ?? "N/A"}). Enter new value [or press Enter to clear]: ");
-            string? newAddress = Console.ReadLine();
-
-            if (newAddress != null)
+            int id = ReadInt("Enter Customer ID to delete: ");
+            Customer existing = manager.SearchCustomerById(id);
+            if (existing == null)
             {
-                try
+                Console.WriteLine("Customer not found.");
+                return;
+            }
+
+            manager.DisplayCustomers(new Customer[] { existing });
+
+            if (ConfirmAction($"Are you sure you want to delete Customer ID {id}? (yes/no): "))
+            {
+                if (manager.DeleteCustomer(id))
                 {
-                    tempCustomer.Address = newAddress;
+                    Console.WriteLine("Customer deleted successfully.");
                 }
-                catch (ArgumentException ex)
+                else
                 {
-                    Console.WriteLine($"Validation Error: {ex.Message}");
+                    Console.WriteLine("Delete failed.");
                 }
             }
-        }
-        private static void UpdateFieldWithValidation(string fieldName, string currentValue, Action<string> updateAction)
-        {
-            string prompt = $"Update {fieldName} (Current: {currentValue}). Enter new {fieldName}: ";
-            GetValidatedStringProperty(prompt, updateAction);
-        }
-
-        private static void DeleteCustomerUI()
-        {
-            Console.Clear();
-            Console.WriteLine("--- Delete Customer ---");
-            try
+            else
             {
-                int id = GetUserIdInput("Enter CustomerId to delete: ");
+                Console.WriteLine("Delete cancelled.");
+            }
+        }
 
-                Customer? customer = customerManager.SearchCustomerById(id);
-                if (customer == null)
+        // Helper functions
+        static int ReadInt(string prompt, Action<int>? validator = null)
+        {
+            while (true)
+            {
+                Console.Write(prompt);
+                string? input = Console.ReadLine();
+                if (int.TryParse(input, out int value))
                 {
-                    Console.WriteLine("Customer not found.");
-                    return;
-                }
-
-                Console.Write($"Are you sure you want to delete Customer {id} ('{customer.Name}')? (Y/N): ");
-                char confirm = Char.ToUpper(Console.ReadKey().KeyChar);
-                Console.WriteLine();
-
-                if (confirm == 'Y')
-                {
-                    if (customerManager.DeleteCustomer(id))
+                    try
                     {
-                        Console.WriteLine("Customer deleted successfully.");
+                        validator?.Invoke(value);
+                        return value;
                     }
-                    else
+                    catch (ArgumentException ex)
                     {
-                        Console.WriteLine("Failed to delete customer (Internal error).");
+                        Console.WriteLine("Invalid input: " + ex.Message);
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Deletion cancelled.");
+                    Console.WriteLine("Please enter a valid integer.");
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Deletion failed: {ex.Message}");
-            }
-            finally
-            {
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
             }
         }
 
-        private static bool ExitApplication()
+        static string ReadString(string prompt, int minLen, int maxLen, bool allowEmpty)
         {
-            Console.Clear();
-            Console.Write("Are you sure you want to exit the Customer Management System? (Y/N): ");
-            char confirm = char.ToUpper(Console.ReadKey().KeyChar);
-            Console.WriteLine();
+            while (true)
+            {
+                Console.Write(prompt);
+                string? input = Console.ReadLine()?.Trim() ?? "";
+                if (allowEmpty && input.Length == 0)
+                    return "";
 
-            if (confirm == 'Y')
-            {
-                Console.WriteLine("Exiting application. Goodbye!");
-                return true;
+                if (input.Length >= minLen && input.Length <= maxLen)
+                {
+                    return input;
+                }
+                else
+                {
+                    Console.WriteLine($"Input length must be between {minLen} and {maxLen} characters.");
+                }
             }
-            else
+        }
+
+        static string ReadCode(string prompt)
+        {
+            while (true)
             {
-                Console.WriteLine("Exit cancelled.");
-                return false;
+                Console.Write(prompt);
+                string? code = Console.ReadLine()?.Trim() ?? "";
+
+                if (string.IsNullOrWhiteSpace(code))
+                {
+                    Console.WriteLine("Code cannot be empty.");
+                    continue;
+                }
+                if (code.Length > 10)
+                {
+                    Console.WriteLine("Code max length is 10.");
+                    continue;
+                }
+                if (!Regex.IsMatch(code, @"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{1,10}$"))
+                {
+                    Console.WriteLine("Code must be alphanumeric with at least one letter and one digit.");
+                    continue;
+                }
+                return code;
+            }
+        }
+
+        static bool ConfirmAction(string message)
+        {
+            while (true)
+            {
+                Console.Write(message);
+                string? answer = Console.ReadLine()?.Trim().ToLower();
+                if (answer == "yes" || answer == "y")
+                    return true;
+                else if (answer == "no" || answer == "n")
+                    return false;
+                else
+                    Console.WriteLine("Please enter yes or no.");
             }
         }
     }
